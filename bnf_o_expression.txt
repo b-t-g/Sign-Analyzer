@@ -6,3 +6,9 @@ o_expression ::=
 
 parenthesized_o_expression ::=
   ( o_expression )
+
+op :: =
+    '+'
+  | '-'
+  | '*'
+  | '/'
