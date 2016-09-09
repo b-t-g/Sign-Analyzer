@@ -23,27 +23,28 @@ possible_operations = "+-*/"
 --Check for exceptional cases and then delegate to more specialized parsers.
 parse :: (Maybe Partial_o_expression) -> Either Parse_error Partial_o_expression 
 parse possible_expression expr =
-  if expr == "" || expr == []
+  if expr == "" 
     then
       case possible_expression of
         Just x -> Right $ fst x
         Nothing -> Left "Tried to parse empty expression"
   else
     if head expr == '('
-      then parse_parenthesized $ tail expr
+      then parse_parenthesized possible_expression $ tail expr
     else
-      parse_o_expression expr
+      parse_o_expression possible_expr expr
 
 {- handle the parenthesized case, it can be a bit tricky since the parenthesized o_expression
- - "belongs" to the - o_expression which precedes it, a bit more analysis needs to be done than
+ - "belongs" to the o_expression which precedes it, a bit more analysis needs to be done than
  - usual before emitting an o_expression.
  -}
-parse_parenthesized :: String -> Either Parse_error Partial_o_expression
+parse_parenthesized :: Maybe O_expression -> String -> Either Parse_error Partial_o_expression
 parse_parenthesized expr = 
   case parse_o_expression expr of
     Left error_message -> error_message
-
+    Right Partial_o_expression -> stuff
 
 parse_o_expression :: String -> Either Parse_error Partial_o_expression
 parse_o_expression = undefined
 
+stuff = undefined
