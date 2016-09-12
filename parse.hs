@@ -23,7 +23,7 @@ possible_operations = "+-*/"
 --Check for exceptional cases and then delegate to more specialized parsers.
 parse :: (Maybe Partial_o_expression) -> Either Parse_error Partial_o_expression 
 parse possible_expression expr =
-  if expr == "" 
+  if expr == ""
     then
       case possible_expression of
         Just x -> Right $ fst x
@@ -34,7 +34,8 @@ parse possible_expression expr =
     else
       parse_o_expression possible_expr expr
 
-{- handle the parenthesized case, it can be a bit tricky since the parenthesized o_expression
+{-
+ - handle the parenthesized case, it can be a bit tricky since the whole parenthesized o_expression
  - "belongs" to the o_expression which precedes it, a bit more analysis needs to be done than
  - usual before emitting an o_expression.
  -}
