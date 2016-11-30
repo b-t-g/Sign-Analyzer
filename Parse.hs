@@ -1,4 +1,4 @@
-module Parse where
+module Main where
 import Text.ParserCombinators.Parsec
 import System.Environment
 import Analyzer
@@ -15,11 +15,11 @@ readExpr input =
     Right value -> show (analyze value empty)
 
 parseExpr :: Parser ArithmeticExpression
-parseExpr = try (parseParenthesized >>= \x -> operation >>= \y -> parseExpr >>= \z ->
-                    return (ArithmeticExpression x (toOperator y) (checkIfMinus y z))) <|> 
+parseExpr = parseParenthesized <|> try (char '-' >> parseParenthesized >>= \x ->
+                 return (ArithmeticExpression (Singleton Minus) Otimes x)) <|>
             try (parseSingleton >>= \x -> operation >>= \y -> parseExpr >>= \z ->
                     return (ArithmeticExpression x (toOperator y) (checkIfMinus y z))) <|>
-            parseParenthesized <|> parseSingleton <|> parseNegativeSingleton
+             parseSingleton <|> (char '-' >> parseNegativeSingleton)
 
 operation :: Parser Char
 operation = oneOf "+-*/"

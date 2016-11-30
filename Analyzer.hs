@@ -2,7 +2,6 @@ module Analyzer where
 import ArithmeticExpression
 import Data.Set as Set
 
--- 
 analyze :: ArithmeticExpression -> Set Sign -> Set Sign
 analyze exp set = 
   case exp of
@@ -14,12 +13,12 @@ analyze exp set =
 analyzeExpression :: Set Sign -> Set Sign -> Operator -> Set Sign
 analyzeExpression set1 set2 op =
   Set.foldr (\sign1 -> union (mapOverSet op sign1 set2)) empty set1
-  
+
 mapOverSet :: Operator -> Sign -> Set Sign -> Set Sign
 mapOverSet op sign set =
   let setOfSets = Set.map (\sign2 -> Analyzer.lookup op sign sign2) set in
     Set.foldr union empty setOfSets
-  
+
 lookup :: Operator -> Sign -> Sign -> Set Sign
 lookup Oplus Plus Plus = singleton Plus
 lookup Oplus Minus Minus = singleton Minus
