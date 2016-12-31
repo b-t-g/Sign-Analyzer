@@ -6,8 +6,8 @@ analyze :: ArithmeticExpression -> Set Sign -> Set Sign
 analyze exp set = 
   case exp of
     (ArithmeticExpression exp1 op exp2) -> let set1 = analyze exp1 set in
-                                             let set2 = analyze exp2 set in
-                                               analyzeExpression set1 set2 op
+                                              let set2 =  analyze exp2 set in
+                                                analyzeExpression set1 set2 op
     (Singleton sign) -> union set (singleton sign)
 
 analyzeExpression :: Set Sign -> Set Sign -> Operator -> Set Sign

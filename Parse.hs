@@ -12,11 +12,17 @@ readExpr input =
     Right value -> show (analyze value empty)
 
 parseExpr :: Parser ArithmeticExpression
-parseExpr = parseParenthesized <|> try (char '-' >> parseParenthesized >>= \x ->
-                 return (ArithmeticExpression (Singleton Minus) Otimes x)) <|>
+parseExpr = try (parseParenthesized >>= \x -> operation >>= \y -> parseExpr >>= \z ->
+              return (ArithmeticExpression x (toOperator y) (checkIfMinus y z)))  <|>
+            parseParenthesized <|>
+            try (char '-' >> parseParenthesized >>= \x ->
+              return (ArithmeticExpression (Singleton Minus) Otimes x)) <|>
             try (parseSingleton >>= \x -> operation >>= \y -> parseExpr >>= \z ->
-                    return (ArithmeticExpression x (toOperator y) (checkIfMinus y z))) <|>
-             parseSingleton <|> (char '-' >> parseNegativeSingleton)
+              return (ArithmeticExpression x (toOperator y) (checkIfMinus y z))) <|>
+            try (char '-' >> parseNegativeSingleton >>= \x -> operation >>= \y -> parseExpr >>= \z ->
+              return (ArithmeticExpression x (toOperator y) (checkIfMinus y z))) <|>
+             parseSingleton <|>
+             try (char '-' >> parseNegativeSingleton)
 
 operation :: Parser Char
 operation = oneOf "+-*/"
