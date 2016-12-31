@@ -1,12 +1,9 @@
-module Main where
+module Parse where
 import Text.ParserCombinators.Parsec
 import System.Environment
 import Analyzer
 import ArithmeticExpression
 import Data.Set as Set
-
-main :: IO ()
-main = getArgs >>= \args -> putStrLn (readExpr (args !! 0) )
 
 readExpr :: String -> String
 readExpr input =
@@ -42,7 +39,7 @@ toOperator :: Char -> Operator
 toOperator op =
   case elem op "*/" of
     True -> Otimes
-    False -> Oplus
+    _ -> Oplus
 
 toSign :: Integer -> Sign
 toSign int =
