@@ -1,40 +1,78 @@
 module Analyzer where
 import ArithmeticExpression
+import Expressions
 import Data.Set as Set
+import Data.Map.Strict as Map
+type Environment = Map.Map (String) (Set Sign)
 
-analyze :: ArithmeticExpression -> Set Sign -> Set Sign
-analyze exp set = 
-  case exp of
-    (ArithmeticExpression exp1 op exp2) -> let set1 = analyze exp1 set in
-                                              let set2 =  analyze exp2 set in
-                                                analyzeExpression set1 set2 op
-    (Singleton sign) -> union set (singleton sign)
+analyze :: Program -> Environment -> Map.Map (String) (Statement) -> Map.Map (String) (Set Sign)
+analyze (Program statement prog) env labels = 
+  case statement of
+    Goto label -> case Map.lookup label labels of
+        Just corresponding       -> analyze (Single corresponding) env labels
+        Nothing                  -> env
+    Define varName (Exp x@(ArithmeticExpression exp1 op exp2)) ->
+      let newEnv = Map.insert (varName) (abstractAnalyzer x Set.empty) env in
+        analyze prog newEnv labels
+    If exp label@(Label name)                  ->
+      let expr = analyzeExpression exp env in
+        if Set.member Plus expr
+        then 
+          case Map.lookup name labels of
+            Just corresponding       -> analyze (Single corresponding) env labels
+            Nothing                  -> env
+        else
+          analyze prog env labels
 
-analyzeExpression :: Set Sign -> Set Sign -> Operator -> Set Sign
-analyzeExpression set1 set2 op =
-  Set.foldr (\sign1 -> union (mapOverSet op sign1 set2)) empty set1
+analyzeExpression :: Expression -> Environment -> Set Sign
+analyzeExpression (Expressions.Exp expr) env =
+  abstractAnalyzer expr Set.empty
+analyzeExpression (ExpLit lit) env = abstractAnalyzer (val lit) Set.empty
+analyzeExpression (Equal exp1 exp2) env =
+  let val1 = analyzeExpression exp1 env in
+    let val2 = analyzeExpression exp2 env in
+      if Set.intersection val1 val2 == Set.empty
+        then Set.singleton Minus
+        else Set.singleton Plus
+analyzeExpression (ExpVar varName) env =
+  case Map.lookup varName env of
+    Just lit -> lit
+    _        -> Set.union (Set.union (Set.singleton Plus) (Set.singleton Zero))
+                         (Set.singleton Minus)
+
+abstractAnalyzer :: ArithmeticExpression -> Set Sign -> Set Sign
+abstractAnalyze (ArithmeticExpression exp1 op exp2) set =
+  let set1 = abstractAnalyze exp1 set in
+    let set2 =  abstractAnalyze exp2 set in
+      analyzeArithmeticExpression set1 set2 op
+abstractAnalyzer (Singleton sign) set =
+  Set.union set (Set.singleton sign)
+
+analyzeArithmeticExpression :: Set Sign -> Set Sign -> Operator -> Set Sign
+analyzeArithmeticExpression set1 set2 op =
+  Set.foldr (\sign1 -> Set.union (mapOverSet op sign1 set2)) Set.empty set1
 
 mapOverSet :: Operator -> Sign -> Set Sign -> Set Sign
 mapOverSet op sign set =
   let setOfSets = Set.map (\sign2 -> Analyzer.lookup op sign sign2) set in
-    Set.foldr union empty setOfSets
+    Set.foldr Set.union Set.empty setOfSets
 
 lookup :: Operator -> Sign -> Sign -> Set Sign
-lookup Oplus Plus Plus = singleton Plus
-lookup Oplus Minus Minus = singleton Minus
-lookup Oplus Plus Zero = singleton Plus
-lookup Oplus Zero Plus = singleton Plus
-lookup Oplus Minus Zero = singleton Minus
-lookup Oplus Zero Minus = singleton Minus
-lookup Oplus Plus Minus = union (union (singleton Plus) (singleton Zero)) (singleton Minus)
-lookup Oplus Minus Plus = union (union (singleton Plus) (singleton Zero)) (singleton Minus)
-lookup Oplus Zero Zero = singleton Zero
-lookup Otimes Plus Plus = singleton Plus
-lookup Otimes Minus Minus = singleton Plus
-lookup Otimes Plus Zero = singleton Zero
-lookup Otimes Zero Plus = singleton Zero
-lookup Otimes Minus Zero = singleton Zero
-lookup Otimes Zero Minus = singleton Zero
-lookup Otimes Plus Minus = singleton Minus
-lookup Otimes Minus Plus = singleton Minus
-lookup Otimes Zero Zero = singleton Zero
+lookup Oplus Plus Plus    = Set.singleton Plus
+lookup Oplus Minus Minus  = Set.singleton Minus
+lookup Oplus Plus Zero    = Set.singleton Plus
+lookup Oplus Zero Plus    = Set.singleton Plus
+lookup Oplus Minus Zero   = Set.singleton Minus
+lookup Oplus Zero Minus   = Set.singleton Minus
+lookup Oplus Plus Minus   = Set.union (Set.union (Set.singleton Plus) (Set.singleton Zero)) (Set.singleton Minus)
+lookup Oplus Minus Plus   = Set.union (Set.union (Set.singleton Plus) (Set.singleton Zero)) (Set.singleton Minus)
+lookup Oplus Zero Zero    = Set.singleton Zero
+lookup Otimes Plus Plus   = Set.singleton Plus
+lookup Otimes Minus Minus = Set.singleton Plus
+lookup Otimes Plus Zero   = Set.singleton Zero
+lookup Otimes Zero Plus   = Set.singleton Zero
+lookup Otimes Minus Zero  = Set.singleton Zero
+lookup Otimes Zero Minus  = Set.singleton Zero
+lookup Otimes Plus Minus  = Set.singleton Minus
+lookup Otimes Minus Plus  = Set.singleton Minus
+lookup Otimes Zero Zero   = Set.singleton Zero

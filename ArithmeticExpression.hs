@@ -3,7 +3,8 @@ module ArithmeticExpression where
 data ArithmeticExpression = ArithmeticExpression { firstExp :: ArithmeticExpression
                                                  , op :: Operator
                                                  , secondExp :: ArithmeticExpression
-                                                 } | Singleton { sign :: Sign} deriving Eq
+                                                 }
+                          | Singleton { sign :: Sign} deriving Eq
 
 data Operator = Oplus | Otimes deriving Eq
 
