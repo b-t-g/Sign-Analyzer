@@ -8,22 +8,26 @@ type Environment = Map.Map (String) (Set Sign)
 analyze :: Program -> Environment -> Map.Map (String) (Statement) -> Map.Map (String) (Set Sign)
 analyze (Program statement prog) env labels = 
   case statement of
+    ExpLabel (Label l) statement    -> analyze prog env (Map.insert l statement labels)
     Goto label -> case Map.lookup label labels of
-        Just corresponding       -> analyze (Single corresponding) env labels
-        Nothing                  -> env
-    Define varName (Exp x@(ArithmeticExpression exp1 op exp2)) ->
-      let newEnv = Map.insert (varName) (abstractAnalyzer x Set.empty) env in
-        analyze prog newEnv labels
-    If exp label@(Label name)                  ->
+        Just corresponding -> analyze (Single corresponding) env labels
+        Nothing            -> env
+    Define varName x -> let newEnv = Map.insert (varName) (analyzeExpression x env) env in
+                          analyze prog newEnv labels
+    If exp label@(Label name) ->
       let expr = analyzeExpression exp env in
         if Set.member Plus expr
         then 
           case Map.lookup name labels of
-            Just corresponding       -> analyze (Single corresponding) env labels
-            Nothing                  -> env
+            Just corresponding -> analyze (Single corresponding) env labels
+            Nothing            -> env
         else
           analyze prog env labels
+    Void                      -> env
+analyze (Single statement) env labels = env
 
+  -- data Statement = ExpLabel Label Statement | Goto String | Define String Expression
+  --             | If Expression Label | Void
 analyzeExpression :: Expression -> Environment -> Set Sign
 analyzeExpression (Expressions.Exp expr) env =
   abstractAnalyzer expr Set.empty
@@ -41,9 +45,9 @@ analyzeExpression (ExpVar varName) env =
                          (Set.singleton Minus)
 
 abstractAnalyzer :: ArithmeticExpression -> Set Sign -> Set Sign
-abstractAnalyze (ArithmeticExpression exp1 op exp2) set =
-  let set1 = abstractAnalyze exp1 set in
-    let set2 =  abstractAnalyze exp2 set in
+abstractAnalyzer (ArithmeticExpression exp1 op exp2) set =
+  let set1 = abstractAnalyzer exp1 set in
+    let set2 =  abstractAnalyzer exp2 set in
       analyzeArithmeticExpression set1 set2 op
 abstractAnalyzer (Singleton sign) set =
   Set.union set (Set.singleton sign)
