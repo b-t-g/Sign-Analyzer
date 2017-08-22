@@ -3,9 +3,6 @@ import ArithmeticExpression
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 
--- I forget what this was supposed to be for...
-newtype IntState = IntState (Map.Map (Expressions.Label) (Expressions.Statement))
-
 -- TODO This looks a heck of a lot like arithmetic expression; refactor both to a common
 -- structure.
 data Program = Program Statement Program | Single Statement

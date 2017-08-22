@@ -21,7 +21,7 @@ parseProgram = parseStatement >>= \statement1 ->
     _    -> parseProgram >>= \program -> return (Program statement1 program)
 
 parseStatement :: Parser Statement
-parseStatement = (try parseVarDec) <|> parseLabel <|> parseGoto <|> parseIfGoto <|> void
+parseStatement = (try parseVarDec) <|> (try parseLabel) <|> parseGoto <|> parseIfGoto <|> void
 
 parseVarDec :: Parser Statement
 parseVarDec =
@@ -33,18 +33,23 @@ parseVarDec =
   return (Define name value)
 
 parseLabel :: Parser Statement
-parseLabel = (manyTill alphaNum (char ':')) >>= \name ->
+parseLabel = (manyTill alphaNum (string ":\n")) >>= \name ->
                         parseStatement >>= \exp ->
+                        optional (char '\n') >>
                         return (ExpLabel (Label name) exp)
 
 parseGoto :: Parser Statement
-parseGoto = string "goto" >> many1 alphaNum >>= \name -> return (Goto name)
+parseGoto =
+  string "goto " >>
+  manyTill alphaNum (char ';') >>= \name ->
+  optional (char '\n') >>
+  return (Goto name)
 
 parseIfGoto :: Parser Statement
 parseIfGoto =
-  string "if" >>
+  string "if " >>
   parseExpression >>= \exp ->
-  string "goto" >>
+  string " goto " >>
   manyTill alphaNum (char ';') >>= \name ->
   return (If exp (Label name))
 

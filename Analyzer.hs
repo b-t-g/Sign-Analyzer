@@ -24,7 +24,10 @@ analyze (Program statement prog) env labels =
         else
           analyze prog env labels
     Void                      -> env
-analyze (Single statement) env labels = env
+-- If we only have one statement, pretend it is a program with two statements and reuse
+-- the logic above
+analyze (Single statement) env labels =
+  analyze (Program statement (Single Void)) env labels
 
   -- data Statement = ExpLabel Label Statement | Goto String | Define String Expression
   --             | If Expression Label | Void
