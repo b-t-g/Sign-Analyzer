@@ -30,8 +30,8 @@ analyze (Single statement) env labels = env
   --             | If Expression Label | Void
 analyzeExpression :: Expression -> Environment -> Set Sign
 analyzeExpression (Expressions.Exp expr) env =
-  abstractAnalyzer expr Set.empty
-analyzeExpression (ExpLit lit) env = abstractAnalyzer (val lit) Set.empty
+  abstractAnalyzer expr Set.empty env
+analyzeExpression (ExpLit lit) env = abstractAnalyzer (val lit) Set.empty env
 analyzeExpression (Equal exp1 exp2) env =
   let val1 = analyzeExpression exp1 env in
     let val2 = analyzeExpression exp2 env in
@@ -44,13 +44,17 @@ analyzeExpression (ExpVar varName) env =
     _        -> Set.union (Set.union (Set.singleton Plus) (Set.singleton Zero))
                          (Set.singleton Minus)
 
-abstractAnalyzer :: ArithmeticExpression -> Set Sign -> Set Sign
-abstractAnalyzer (ArithmeticExpression exp1 op exp2) set =
-  let set1 = abstractAnalyzer exp1 set in
-    let set2 =  abstractAnalyzer exp2 set in
+abstractAnalyzer :: ArithmeticExpression -> Set Sign -> Environment -> Set Sign
+abstractAnalyzer (ArithmeticExpression exp1 op exp2) set env =
+  let set1 = abstractAnalyzer exp1 set env in
+    let set2 = abstractAnalyzer exp2 set env in
       analyzeArithmeticExpression set1 set2 op
-abstractAnalyzer (Singleton sign) set =
+abstractAnalyzer (Singleton sign) set env =
   Set.union set (Set.singleton sign)
+abstractAnalyzer (Var s) set env =
+  case Map.lookup s env of
+    Nothing   -> set
+    Just var  -> var
 
 analyzeArithmeticExpression :: Set Sign -> Set Sign -> Operator -> Set Sign
 analyzeArithmeticExpression set1 set2 op =

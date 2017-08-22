@@ -4,7 +4,7 @@ data ArithmeticExpression = ArithmeticExpression { firstExp :: ArithmeticExpress
                                                  , op :: Operator
                                                  , secondExp :: ArithmeticExpression
                                                  }
-                          | Singleton { sign :: Sign} deriving Eq
+                          | Singleton { sign :: Sign} | Var String deriving Eq
 
 data Operator = Oplus | Otimes deriving Eq
 

@@ -20,7 +20,6 @@ parseProgram = parseStatement >>= \statement1 ->
     Void -> return (Single Void)
     _    -> parseProgram >>= \program -> return (Program statement1 program)
 
-
 parseStatement :: Parser Statement
 parseStatement = (try parseVarDec) <|> parseLabel <|> parseGoto <|> parseIfGoto <|> void
 
@@ -66,7 +65,8 @@ parseLiteralExpr = try (parseParenthesized >>= \x -> operation >>= \y -> parseLi
              try (char '-' >> parseNegativeSingleton)
 
 parseSingletonAuxiliary :: (Integer -> Integer) -> Parser ArithmeticExpression
-parseSingletonAuxiliary f = many1 digit >>= (return . Singleton . toSign . f . read)
+parseSingletonAuxiliary f = (many1 digit >>= (return . Singleton . toSign . f . read)) <|>
+                            (many1 alphaNum >>= (return . Var ))
 
 parseSingleton :: Parser ArithmeticExpression
 parseSingleton = parseSingletonAuxiliary id
@@ -80,6 +80,8 @@ parseParenthesized = char '(' >>
                      char ')' >>
                      return x
 
+-- This currently fails for things like Bar := Var+6 (but just Bar := Var works
+-- make many1 alphaNum as well as parsing numbers work?)
 parseExpression :: Parser Expression
 parseExpression = parseArithmeticExpression <|>  parseEqualityCheck <|> parseLiteral
   <|> parseVariable
@@ -121,7 +123,7 @@ toOperator :: Char -> Operator
 toOperator op =
   case elem op "*/" of
     True -> Otimes
-    _ -> Oplus
+    _    -> Oplus
 
 toSign :: Integer -> Sign
 toSign int =
