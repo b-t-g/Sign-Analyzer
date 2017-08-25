@@ -4,33 +4,52 @@ import Expressions
 import Data.Set as Set
 import Data.Map.Strict as Map
 type Environment = Map.Map (String) (Set Sign)
+type Labels = Map.Map (String) (Label)
 
-analyze :: Program -> Environment -> Map.Map (String) (Statement) -> Map.Map (String) (Set Sign)
-analyze (Program statement prog) env labels = 
+preProcess :: Program -> Labels -> Labels
+preProcess (Program (ExpLabel (LabelName l) statement) prog) labels =
+  preProcess prog (Map.insert l statement labels)
+preProcess (Single (Statement (SingleLabel Void))) labels =
+  labels
+preProcess (Program x y) labels = preProcess y labels
+  
+  
+
+analyze :: Program -> Labels -> Environment -> Environment
+analyze (Program statement prog) labels env = 
   case statement of
-    ExpLabel (Label l) statement    -> analyze prog env (Map.insert l statement labels)
-    Goto label -> case Map.lookup label labels of
-        Just corresponding -> analyze (Single corresponding) env labels
+    ExpLabel (LabelName l) statement -> analyze prog labels env 
+    Statement x                      -> let newEnv = analyzeLabels x labels env in
+                                          analyze prog labels newEnv
+-- If we only have one statement, pretend it is a program with two statements and reuse
+-- the logic above
+analyze (Single (Statement (SingleLabel Void))) labels env = env
+analyze (Single statement) labels env =
+  analyze (Program statement (Single (Statement (SingleLabel Void)))) labels env
+
+analyzeLabels :: Label -> Labels -> Environment -> Environment
+analyzeLabels (Label (Goto label) labelStatement) labels env = 
+     case Map.lookup label labels of
+        Just corresponding -> analyzeLabels corresponding labels env
         Nothing            -> env
-    Define varName x -> let newEnv = Map.insert (varName) (analyzeExpression x env) env in
-                          analyze prog newEnv labels
-    If exp label@(Label name) ->
+analyzeLabels (Label (Define varName x) labelStatement) labels env =
+  let newEnv = Map.insert (varName) (analyzeExpression x env) env in
+                          analyzeLabels labelStatement labels newEnv
+analyzeLabels (Label (If exp label@(LabelName name)) labelStatement) labels env =
       let expr = analyzeExpression exp env in
         if Set.member Plus expr
         then 
           case Map.lookup name labels of
-            Just corresponding -> analyze (Single corresponding) env labels
+            Just corresponding -> analyzeLabels corresponding labels env
             Nothing            -> env
         else
-          analyze prog env labels
-    Void                      -> env
--- If we only have one statement, pretend it is a program with two statements and reuse
--- the logic above
-analyze (Single statement) env labels =
-  analyze (Program statement (Single Void)) env labels
+          analyzeLabels labelStatement labels env
+analyzeLabels (Label (Void) labelStatement) labels env = analyzeLabels labelStatement labels env 
 
-  -- data Statement = ExpLabel Label Statement | Goto String | Define String Expression
-  --             | If Expression Label | Void
+analyzeLabels (SingleLabel Void) labels env = env
+analyzeLabels (SingleLabel statement) labels env =
+  analyzeLabels (Label statement (SingleLabel Void)) labels env
+
 analyzeExpression :: Expression -> Environment -> Set Sign
 analyzeExpression (Expressions.Exp expr) env =
   abstractAnalyzer expr Set.empty env

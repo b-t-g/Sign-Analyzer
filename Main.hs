@@ -3,4 +3,4 @@ import System.Environment
 import Parse
 
 main :: IO ()
-main = getArgs >>= \args -> putStrLn (Parse.readExpr (args !! 0) )
+main = getArgs >>= \args -> putStrLn (args !! 0) >> putStrLn (Parse.readExpr (args !! 0) )

@@ -3,12 +3,10 @@ import ArithmeticExpression
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 
--- TODO This looks a heck of a lot like arithmetic expression; refactor both to a common
--- structure.
 data Program = Program Statement Program | Single Statement
                deriving Show
 
-newtype Label = Label String
+newtype LabelName = LabelName String
               deriving Show
 
 data Expression = Exp ArithmeticExpression | Equal Expression Expression
@@ -22,6 +20,11 @@ newtype Literal = Literal { val :: ArithmeticExpression}
 data Variable = Variable String Literal
                deriving Show
 
-data Statement = ExpLabel Label Statement | Goto String | Define String Expression
-               | If Expression Label | Void
-               deriving Show
+data Label = Label LabelStatement Label | SingleLabel LabelStatement deriving Show
+
+-- Valid statements in a label
+data LabelStatement = Goto String | Define String Expression | If Expression LabelName | Void
+                    deriving Show
+
+-- A general statement can be anything that can be done in a label plus defining a label.
+data Statement = ExpLabel LabelName Label | Statement Label deriving Show

@@ -12,18 +12,34 @@ readExpr :: String -> String
 readExpr input =
   case parse parseProgram "Oexp" input of
     Left err -> mconcat (Prelude.map (\x -> messageString x ++ "\n") $ errorMessages err)
-    Right value -> show (analyze value Map.empty Map.empty)
+    Right value -> show (analyze value (preProcess value Map.empty) Map.empty)
 
 parseProgram :: Parser Program
 parseProgram = parseStatement >>= \statement1 ->
   case statement1 of
-    Void -> return (Single Void)
+    Statement (SingleLabel Void) -> return (Single (Statement (SingleLabel Void)))
     _    -> parseProgram >>= \program -> return (Program statement1 program)
 
 parseStatement :: Parser Statement
-parseStatement = (try parseVarDec) <|> (try parseLabel) <|> parseGoto <|> parseIfGoto <|> void
+parseStatement = (try parseLabel) <|> ((try parseLabelStatement) >>= \labelStatement -> return (Statement (SingleLabel labelStatement)))
 
-parseVarDec :: Parser Statement
+parseLabel :: Parser Statement
+parseLabel =
+  (manyTill alphaNum (string ":\n")) >>= \name ->
+  parseLabelContents >>= \label -> return (ExpLabel (LabelName name) label)
+
+parseLabelContents :: Parser Label
+parseLabelContents = 
+  (try parseLabelStatement) >>= \statement ->
+  case statement of
+    Void -> return (SingleLabel Void)
+    _    -> ((try parseLabelContents) >>= \label -> return (Label statement label)) <|>
+            return (Label statement (SingleLabel Void))
+
+parseLabelStatement :: Parser LabelStatement
+parseLabelStatement = (try parseVarDec) <|> parseGoto <|> parseIfGoto <|> void
+
+parseVarDec :: Parser LabelStatement
 parseVarDec =
   (manyTill alphaNum (char ' ')) >>= \name  ->
   string ":= " >>
@@ -32,28 +48,22 @@ parseVarDec =
   optional ( char '\n') >>
   return (Define name value)
 
-parseLabel :: Parser Statement
-parseLabel = (manyTill alphaNum (string ":\n")) >>= \name ->
-                        parseStatement >>= \exp ->
-                        optional (char '\n') >>
-                        return (ExpLabel (Label name) exp)
-
-parseGoto :: Parser Statement
+parseGoto :: Parser LabelStatement
 parseGoto =
   string "goto " >>
   manyTill alphaNum (char ';') >>= \name ->
   optional (char '\n') >>
   return (Goto name)
 
-parseIfGoto :: Parser Statement
+parseIfGoto :: Parser LabelStatement
 parseIfGoto =
   string "if " >>
   parseExpression >>= \exp ->
   string " goto " >>
   manyTill alphaNum (char ';') >>= \name ->
-  return (If exp (Label name))
+  return (If exp (LabelName name))
 
-void :: Parser Statement
+void :: Parser LabelStatement
 void = eof >> return (Void)
 
 parseLiteralExpr = try (parseParenthesized >>= \x -> operation >>= \y -> parseLiteralExpr >>= \z ->
