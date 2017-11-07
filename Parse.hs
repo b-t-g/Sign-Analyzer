@@ -21,27 +21,29 @@ parseProgram = parseStatement >>= \statement1 ->
     _    -> parseProgram >>= \program -> return (Program statement1 program)
 
 parseStatement :: Parser Statement
-parseStatement = (try parseLabel) <|> ((try parseLabelStatement) >>= \labelStatement -> return (Statement (SingleLabel labelStatement)))
+parseStatement = try parseLabel <|>
+                 (try parseLabelStatement >>=
+                 \labelStatement -> return (Statement (SingleLabel labelStatement)))
 
 parseLabel :: Parser Statement
 parseLabel =
-  (manyTill alphaNum (string ":\n")) >>= \name ->
+  manyTill alphaNum (string ":\n") >>= \name ->
   parseLabelContents >>= \label -> return (ExpLabel (LabelName name) label)
 
 parseLabelContents :: Parser Label
-parseLabelContents = 
-  (try parseLabelStatement) >>= \statement ->
+parseLabelContents =
+  try parseLabelStatement >>= \statement ->
   case statement of
     Void -> return (SingleLabel Void)
-    _    -> ((try parseLabelContents) >>= \label -> return (Label statement label)) <|>
+    _    -> (try parseLabelContents >>= \label -> return (Label statement label)) <|>
             return (Label statement (SingleLabel Void))
 
 parseLabelStatement :: Parser LabelStatement
-parseLabelStatement = (try parseVarDec) <|> parseGoto <|> parseIfGoto <|> void
+parseLabelStatement = try parseVarDec <|> parseGoto <|> parseIfGoto <|> void
 
 parseVarDec :: Parser LabelStatement
 parseVarDec =
-  (manyTill alphaNum (char ' ')) >>= \name  ->
+  manyTill alphaNum (char ' ') >>= \name  ->
   string ":= " >>
   parseExpression >>= \value ->
   string ";" >>
@@ -64,7 +66,7 @@ parseIfGoto =
   return (If exp (LabelName name))
 
 void :: Parser LabelStatement
-void = eof >> return (Void)
+void = eof >> return Void
 
 parseLiteralExpr = try (parseParenthesized >>= \x -> operation >>= \y -> parseLiteralExpr >>= \z ->
               return (ArithmeticExpression x (toOperator y) (checkIfMinus y z)))  <|>
@@ -80,8 +82,8 @@ parseLiteralExpr = try (parseParenthesized >>= \x -> operation >>= \y -> parseLi
              try (char '-' >> parseNegativeSingleton)
 
 parseSingletonAuxiliary :: (Integer -> Integer) -> Parser ArithmeticExpression
-parseSingletonAuxiliary f = (many1 digit >>= (return . Singleton . toSign . f . read)) <|>
-                            (many1 alphaNum >>= (return . Var ))
+parseSingletonAuxiliary f =  (Singleton . toSign . f . read) <$> many1 digit <|>
+                            Var <$> many1 alphaNum
 
 parseSingleton :: Parser ArithmeticExpression
 parseSingleton = parseSingletonAuxiliary id
@@ -124,7 +126,7 @@ operation = oneOf "+-*/"
 checkIfMinus :: Char -> ArithmeticExpression -> ArithmeticExpression
 checkIfMinus op (ArithmeticExpression singleton opr exp) =
   if singleton == Singleton Zero || elem op "+*/"
-    then (ArithmeticExpression singleton opr exp) 
+    then ArithmeticExpression singleton opr exp
   else
     ArithmeticExpression (Singleton Minus) opr exp
 checkIfMinus op (Singleton sign) =
@@ -136,15 +138,13 @@ checkIfMinus op (Singleton sign) =
 -- SHOULD always be valid because it's called from operation.
 toOperator :: Char -> Operator
 toOperator op =
-  case elem op "*/" of
-    True -> Otimes
-    _    -> Oplus
+  if op `elem` "*/"
+     then Otimes
+  else
+    Oplus
 
 toSign :: Integer -> Sign
-toSign int =
- if int == 0
-   then Zero
- else if int < 0
-   then Minus
- else
-   Plus
+toSign int
+ | int == 0 = Zero
+ | int < 0 = Minus
+ | otherwise = Plus
