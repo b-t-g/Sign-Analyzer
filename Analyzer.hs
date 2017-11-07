@@ -3,8 +3,9 @@ import ArithmeticExpression
 import Expressions
 import Data.Set as Set
 import Data.Map.Strict as Map
-type Environment = Map.Map (String) (Set Sign)
-type Labels = Map.Map (String) (Label)
+import Data.Maybe as Maybe
+type Environment = Map.Map String (Set Sign)
+type Labels = Map.Map String Label
 
 preProcess :: Program -> Labels -> Labels
 preProcess (Program (ExpLabel (LabelName l) statement) prog) labels =
@@ -12,13 +13,13 @@ preProcess (Program (ExpLabel (LabelName l) statement) prog) labels =
 preProcess (Single (Statement (SingleLabel Void))) labels =
   labels
 preProcess (Program x y) labels = preProcess y labels
-  
-  
+
+
 
 analyze :: Program -> Labels -> Environment -> Environment
-analyze (Program statement prog) labels env = 
+analyze (Program statement prog) labels env =
   case statement of
-    ExpLabel (LabelName l) statement -> analyze prog labels env 
+    ExpLabel (LabelName l) statement -> analyze prog labels env
     Statement x                      -> let newEnv = analyzeLabels x labels env in
                                           analyze prog labels newEnv
 -- If we only have one statement, pretend it is a program with two statements and reuse
@@ -28,23 +29,23 @@ analyze (Single statement) labels env =
   analyze (Program statement (Single (Statement (SingleLabel Void)))) labels env
 
 analyzeLabels :: Label -> Labels -> Environment -> Environment
-analyzeLabels (Label (Goto label) labelStatement) labels env = 
+analyzeLabels (Label (Goto label) labelStatement) labels env =
      case Map.lookup label labels of
         Just corresponding -> analyzeLabels corresponding labels env
         Nothing            -> env
 analyzeLabels (Label (Define varName x) labelStatement) labels env =
-  let newEnv = Map.insert (varName) (analyzeExpression x env) env in
+  let newEnv = Map.insert varName (analyzeExpression x env) env in
                           analyzeLabels labelStatement labels newEnv
 analyzeLabels (Label (If exp label@(LabelName name)) labelStatement) labels env =
       let expr = analyzeExpression exp env in
         if Set.member Plus expr
-        then 
+        then
           case Map.lookup name labels of
             Just corresponding -> analyzeLabels corresponding labels env
             Nothing            -> env
         else
           analyzeLabels labelStatement labels env
-analyzeLabels (Label (Void) labelStatement) labels env = analyzeLabels labelStatement labels env 
+analyzeLabels (Label Void labelStatement) labels env = analyzeLabels labelStatement labels env
 
 analyzeLabels (SingleLabel Void) labels env = env
 analyzeLabels (SingleLabel statement) labels env =
@@ -74,9 +75,7 @@ abstractAnalyzer (ArithmeticExpression exp1 op exp2) set env =
 abstractAnalyzer (Singleton sign) set env =
   Set.union set (Set.singleton sign)
 abstractAnalyzer (Var s) set env =
-  case Map.lookup s env of
-    Nothing   -> set
-    Just var  -> var
+  Maybe.fromMaybe set (Map.lookup s env)
 
 analyzeArithmeticExpression :: Set Sign -> Set Sign -> Operator -> Set Sign
 analyzeArithmeticExpression set1 set2 op =
@@ -84,7 +83,7 @@ analyzeArithmeticExpression set1 set2 op =
 
 mapOverSet :: Operator -> Sign -> Set Sign -> Set Sign
 mapOverSet op sign set =
-  let setOfSets = Set.map (\sign2 -> Analyzer.lookup op sign sign2) set in
+  let setOfSets = Set.map (Analyzer.lookup op sign) set in
     Set.foldr Set.union Set.empty setOfSets
 
 lookup :: Operator -> Sign -> Sign -> Set Sign
