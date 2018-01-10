@@ -89,13 +89,10 @@ mapOverSet op sign set =
 lookup :: Operator -> Sign -> Sign -> Set Sign
 lookup Oplus x y
   | x == y = Set.singleton x
-lookup Oplus Plus Zero    = Set.singleton Plus
-lookup Oplus Minus Zero   = Set.singleton Minus
+lookup Oplus x Zero    = Set.singleton x
 lookup Oplus Plus Minus   = Set.union (Set.union (Set.singleton Plus) (Set.singleton Zero)) (Set.singleton Minus)
-lookup Otimes Plus Plus   = Set.singleton Plus
-lookup Otimes Minus Minus = Set.singleton Plus
-lookup Otimes Zero Zero   = Set.singleton Zero
-lookup Otimes Plus Zero   = Set.singleton Zero
-lookup Otimes Minus Zero  = Set.singleton Zero
+lookup Otimes x Zero      = Set.singleton Zero
 lookup Otimes Plus Minus  = Set.singleton Minus
+lookup Otimes x y
+  | x == y = Set.singleton Plus
 lookup op x y             = Analyzer.lookup op y x
